@@ -7,17 +7,17 @@ Players are represented by 1 and -1.
 import numpy as np
 
 
-def simple_rewards(board, player, winner=0):
+def simple_rewards(reversi_env, prev_board, player):
     base_reward = 1
-    if not winner == 0:
-        if winner * player > 0:
+    if not reversi_env.winner == 0:
+        if reversi_env.winner * player > 0:
             return base_reward
-        elif winner * player < 0:
+        elif reversi_env.winner * player < 0:
             return -base_reward
         else:
             return 0
 
-    total = np.sum(board, axis=(0,1))
+    total = np.sum(reversi_env.board, axis=(0,1))
     if total * player > 0:
         return base_reward
     elif total * player < 0:
@@ -38,9 +38,10 @@ class ReversiEnvironment:
         self.reset()
 
     def step(self, action, player):
+        prev_board = self.board.copy()
         # Trying to step finished board
         if self.done:
-            reward = self.reward_fn(self.board, player, self.winner)
+            reward = self.reward_fn(self, prev_board, player)
             return self.board, reward, self.done, None
 
         x, y = action
@@ -52,14 +53,14 @@ class ReversiEnvironment:
             # Illegal Move
             self.done = True
             self.winner = -player
-            reward = self.reward_fn(self.board, player, self.winner)
+            reward = self.reward_fn(self, prev_board, player)
             return self.board, reward, self.done, None
         else:
             # Legal Move
             for x_loc, y_loc in self.modify_pieces:
                 self.board[x_loc, y_loc] = player
             self.board[x,y] = player
-            reward = self.reward_fn(self.board, player)
+            reward = self.reward_fn(self, prev_board, player)
 
         # Check for full board
         if np.sum(np.abs(self.board), axis=(0,1)) == self.board_size*self.board_size:
