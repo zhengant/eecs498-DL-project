@@ -82,10 +82,12 @@ class ReversiEnvironment:
         step_sizes = np.arange(-1, 2)
         for x_diff in step_sizes:
             for y_diff in step_sizes:
+                # Looking in all 8 directions and checking the placed piece
                 if x_diff == 0 and y_diff == 0:
+                    # Can't place a piece on a filled spot
                     if not self.board[x_action, y_action] == 0:
                         self.modify_pieces = []
-                        return True;
+                        return True
                 else:
                     x = x_action + x_diff
                     y = y_action + y_diff
@@ -96,12 +98,15 @@ class ReversiEnvironment:
         else:
             return False
 
+    # Stores the pieces that need to be modified
     def get_pieces_to_modify(self, x, y, x_diff, y_diff, player):
         potential_pieces_to_modify = []
+        # Find a string of pieces to flip
         while self.is_inside_board(x, y) and self.board[x,y] == -player:
             potential_pieces_to_modify.append((x,y))
             x += x_diff
             y += y_diff
+        # Check if the end of the string is one of the current player's pieces
         if self.is_inside_board(x,y) and self.board[x,y] == player:
             self.modify_pieces += potential_pieces_to_modify
 
