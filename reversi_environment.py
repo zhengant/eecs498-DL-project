@@ -26,6 +26,17 @@ def simple_rewards(reversi_env, prev_board, player):
         return 0
 
 
+def legal_moves(reversi_env, player, default_value=-10):
+    reversi_env.modify_pieces = []
+    legal_move_mask = default_value * np.ones((reversi_env.board_size,reversi_env.board_size))
+    for r in range(reversi_env.board_size):
+        for c in range(reversi_env.board_size):
+            if not reversi_env.check_for_illegal_move(r, c, player):
+                legal_move_mask[r,c] = 1
+                reversi_env.modify_pieces = []
+    return legal_move_mask
+
+
 class ReversiEnvironment:
     def __init__(self, board_size=8, reward_fn=simple_rewards):
         self.board_size = board_size
@@ -37,15 +48,16 @@ class ReversiEnvironment:
 
         self.reset()
 
-    def step(self, action, player):
+    def step(self, action):
         prev_board = self.board.copy()
+        x, y, player = action
+        reward = 0
+
         # Trying to step finished board
         if self.done:
             reward = self.reward_fn(self, prev_board, player)
             return self.board, reward, self.done, None
 
-        x, y = action
-        reward = 0
 
         # Check for Illegal Move
         self.modify_pieces = []
@@ -122,14 +134,23 @@ class ReversiEnvironment:
 # print(env.board)
 #
 # def make_move(x,y, player):
-#     board, rew, done, info = env.step((x, y), player)
+#     board, rew, done, info = env.step((x, y, player))
 #     print(board)
 #     print("Reward:", rew)
 #     print("Done:", done)
 #
-# make_move(1,3,1)
-# make_move(3,4,-1)
-# make_move(4,3,1)
+# player = 1
+# print(legal_moves(env, player))
+# make_move(1,3,player)
+#
+# player *= -1
+# print(legal_moves(env, player))
+# make_move(3,4,player)
+#
+# player *= -1
+# print(legal_moves(env, player))
+# make_move(4,3,player)
+
 # make_move(5,2,-1)
 # make_move(4,2,1)
 # make_move(1,2,-1)
