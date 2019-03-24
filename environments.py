@@ -66,7 +66,8 @@ class MultiItemGridWorld:
 
         self.current_step = 0
 
-        return (self.grid, self.current_pos)
+        # return (self.grid, self.current_pos)
+        return self.grid
 
 
     def step(self, action):
