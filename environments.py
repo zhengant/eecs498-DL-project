@@ -50,7 +50,7 @@ class MultiItemGridWorld:
 
         # randomly set starting position
         self.current_pos = np.random.choice(self.size, 2)
-        self.grid[self.current_pos[0], self.current_pos[1]] = -1
+        self.grid[self.current_pos[0], self.current_pos[1]] = -2
 
         self.current_step = 0
 
@@ -78,10 +78,15 @@ class MultiItemGridWorld:
             }
 
             reward = 0
+
+            # make current position empty
+            self.grid[self.current_pos[0], self.current_pos[1]] = -1
+
             # update position
             self.current_pos = np.clip(self.current_pos + action_map[action], 0, self.size-1)
             item = self.grid[self.current_pos[0], self.current_pos[1]]
-            self.grid[self.current_pos[0], self.current_pos[1]] = -1
+            # mark current_position on the board
+            self.grid[self.current_pos[0], self.current_pos[1]] = -2
 
             if item >= 0:
                 reward += np.multiply(self.rewards, self.reward_mask)[item]
@@ -91,7 +96,7 @@ class MultiItemGridWorld:
 
             self.current_step += 1
 
-            return (self.grid, self.current_pos), reward, self.current_step >= self.episode_length, 0
+            return self.grid, reward, self.current_step >= self.episode_length, 0
 
 
 
