@@ -46,7 +46,7 @@ class MultiItemGridWorld:
             4: np.array([0, -1])
         }
 
-        self.observation_space = gym.spaces.Box(low=-2, high=self.num_types-1, shape=(self.size, self.size))
+        self.observation_space = gym.spaces.Box(low=-2, high=self.num_types-1, shape=(self.size, self.size), dtype=np.int32)
         self.action_space = gym.spaces.Discrete(len(self.action_map))
 
 
