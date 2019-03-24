@@ -8,6 +8,7 @@ files
 """
 
 import numpy as np
+import gym
 
 class MultiItemGridWorld:
     # maybe want separate classes for the distillation environment and the genetic algorithm environment
@@ -36,6 +37,17 @@ class MultiItemGridWorld:
         # reward_mask should be a 1-0 array that tells us which rewards are "on" for a particular episode
         # if reward_mask[i] == 1, then reward for item i is "on"
         self.reward_mask = reward_mask if reward_mask is not None else np.ones(self.num_types)
+
+        self.action_map = {
+            0: np.array([0, 0]),
+            1: np.array([-1, 0]),
+            2: np.array([0, 1]),
+            3: np.array([1, 0]),
+            4: np.array([0, -1])
+        }
+
+        self.observation_space = gym.spaces.Box(low=-2, high=self.num_types-1, shape=(self.size, self.size))
+        self.action_space = gym.spaces.Discrete(len(self.action_map))
 
 
     def reset(self, reward_mask=None):
@@ -69,13 +81,7 @@ class MultiItemGridWorld:
             raise RuntimeError('episode ended')
 
         else:
-            action_map = {
-                0: np.array([0, 0]),
-                1: np.array([-1, 0]),
-                2: np.array([0, 1]),
-                3: np.array([1, 0]),
-                4: np.array([0, -1])
-            }
+
 
             reward = 0
 
@@ -83,7 +89,7 @@ class MultiItemGridWorld:
             self.grid[self.current_pos[0], self.current_pos[1]] = -1
 
             # update position
-            self.current_pos = np.clip(self.current_pos + action_map[action], 0, self.size-1)
+            self.current_pos = np.clip(self.current_pos + self.action_map[action], 0, self.size-1)
             item = self.grid[self.current_pos[0], self.current_pos[1]]
             # mark current_position on the board
             self.grid[self.current_pos[0], self.current_pos[1]] = -2
