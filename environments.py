@@ -11,14 +11,15 @@ import numpy as np
 
 class MultiItemGridWorld:
     # maybe want separate classes for the distillation environment and the genetic algorithm environment
-    def __init__(self, size, num_types, rewards, empty_prob, move_penalty, episode_length):
+    def __init__(self, size, num_types, rewards, empty_prob, move_penalty, episode_length, reward_mask):
         """
         init parameters
         :param size: indicates the size of the grid - grid will be size x size
         :param num_types: the number of different items there will be
         :param rewards: rewards[i] should be the reward given for picking up item i
         :param empty_prob: for initialization - the probability that a particular space will be empty
-        :param move_penalty: the penalty to be placed on moving
+        :param move_penalty: the penalty to be placed on moving. Penalty will be added to reward so it should be signed
+        appropriately
         :param episode_length: number of steps in a single episode
         """
         self.grid = np.zeros((size, size), dtype=np.int32)
@@ -30,10 +31,11 @@ class MultiItemGridWorld:
         self.episode_length = episode_length
 
         self.current_pos = None
+        self.current_step = -1
 
         # reward_mask should be a 1-0 array that tells us which rewards are "on" for a particular episode
         # if reward_mask[i] == 1, then reward for item i is "on"
-        self.reward_mask = np.ones(self.num_types)
+        self.reward_mask = reward_mask if reward_mask is not None else np.ones(self.num_types)
 
 
     def reset(self, reward_mask=None):
@@ -41,19 +43,55 @@ class MultiItemGridWorld:
         for i in range(self.size):
             for j in range(self.size):
                 if np.random.random() < self.empty_prob:
-                    self.grid[i,j] = 0
+                    self.grid[i,j] = -1
                 else:
                     idx = np.random.choice(self.num_types)
                     self.grid[i,j] = idx
 
-        self.reward_mask = reward_mask if reward_mask is not None else np.ones(self.num_types)
-
         # randomly set starting position
         self.current_pos = np.random.choice(self.size, 2)
-        self.grid[self.current_pos[0], self.current_pos[1]] = 0
+        self.grid[self.current_pos[0], self.current_pos[1]] = -1
+
+        self.current_step = 0
+
+        return (self.grid, self.current_pos)
 
 
-    def step(self):
+    def step(self, action):
+        """
+        Make an action
+        :param action: 0 - stay, 1 - north, 2 - east, 3 - south, 4 - west
+        :return: state, reward, done, info
+        """
         if self.current_pos is None:
             raise RuntimeError('environment not initialized')
+        if self.current_step >= self.episode_length:
+            raise RuntimeError('episode ended')
+
+        else:
+            action_map = {
+                0: np.array([0, 0]),
+                1: np.array([-1, 0]),
+                2: np.array([0, 1]),
+                3: np.array([1, 0]),
+                4: np.array([0, -1])
+            }
+
+            reward = 0
+            # update position
+            self.current_pos = np.clip(self.current_pos + action_map[action], 0, self.size-1)
+            item = self.grid[self.current_pos[0], self.current_pos[1]]
+            self.grid[self.current_pos[0], self.current_pos[1]] = -1
+
+            if item >= 0:
+                reward += np.multiply(self.rewards, self.reward_mask)[item]
+
+            if not action == 0:
+                reward += self.move_penalty
+
+            self.current_step += 1
+
+            return (self.grid, self.current_pos), reward, self.current_step >= self.episode_length, 0
+
+
 
