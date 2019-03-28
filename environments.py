@@ -12,7 +12,7 @@ import gym
 
 class MultiItemGridWorld:
     # maybe want separate classes for the distillation environment and the genetic algorithm environment
-    def __init__(self, size, num_types, rewards, empty_prob, move_penalty, episode_length, reward_mask):
+    def __init__(self, size, num_types, rewards, empty_prob, move_penalty, episode_length, reward_mask, noop_action=True):
         """
         init parameters
         :param size: indicates the size of the grid - grid will be size x size
@@ -39,12 +39,13 @@ class MultiItemGridWorld:
         self.reward_mask = reward_mask if reward_mask is not None else np.ones(self.num_types)
 
         self.action_map = {
-            0: np.array([0, 0]),
-            1: np.array([-1, 0]),
-            2: np.array([0, 1]),
-            3: np.array([1, 0]),
-            4: np.array([0, -1])
+            0: np.array([-1, 0]),
+            1: np.array([0, 1]),
+            2: np.array([1, 0]),
+            3: np.array([0, -1])
         }
+        if noop_action:
+            self.action_map[4] = np.array([0, 0])
 
         self.observation_space = gym.spaces.Box(low=-2, high=self.num_types-1, shape=(self.size, self.size), dtype=np.int32)
         self.action_space = gym.spaces.Discrete(len(self.action_map))

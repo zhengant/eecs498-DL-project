@@ -23,5 +23,5 @@ if __name__ == '__main__':
         'layer_norm': False,
     }
     env = MultiItemGridWorld(size=8, num_types=4, rewards=[2, 4, 8, 16],
-        empty_prob=0.5, move_penalty=-1, episode_length=32, reward_mask=None)
+        empty_prob=0.5, move_penalty=-1, episode_length=32, reward_mask=None, noop_action=False)
     dqn(env, 'mlp', config, **kwargs)
