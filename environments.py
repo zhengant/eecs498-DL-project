@@ -99,7 +99,7 @@ class MultiItemGridWorld:
             if item >= 0:
                 reward += np.multiply(self.rewards, self.reward_mask)[item]
 
-            if not action == 0:
+            if not action == 4:
                 reward += self.move_penalty
 
             self.current_step += 1
