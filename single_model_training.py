@@ -34,6 +34,7 @@ def dqn(env, network, config, **kwargs):
                 rew = locals['episode_rewards']
                 smooth_rew = smooth(rew, 500)
                 plt.plot(range(len(smooth_rew)), smooth_rew)
+                # plt.plot(range(len(rew)), rew)
                 plt.show()
             return True
         return False
