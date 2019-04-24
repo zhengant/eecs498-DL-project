@@ -9,6 +9,18 @@ import gym.spaces
 
 np.set_printoptions(precision=3)
 
+def other_player(current_player):
+    return 3 - current_player
+
+
+def legal_moves(board, player, board_size, default_value=0):
+    legal_move_mask = default_value * np.ones((board_size, board_size))
+    for r in range(board_size):
+        for c in range(board_size):
+            if not check_for_illegal_move(board, r, c, player, board_size) == True:
+                legal_move_mask[r,c] = 1
+    return legal_move_mask
+
 
 def simple_rewards(reversi_env, prev_board, player, base_reward=1):
     if not reversi_env.winner == 0:
@@ -38,17 +50,34 @@ def simple_rewards(reversi_env, prev_board, player, base_reward=1):
     return rew
 
 
-def legal_moves(board, player, board_size, default_value=0):
-    legal_move_mask = default_value * np.ones((board_size, board_size))
-    for r in range(board_size):
-        for c in range(board_size):
-            if not check_for_illegal_move(board, r, c, player, board_size) == True:
-                legal_move_mask[r,c] = 1
-    return legal_move_mask
+def greedy_rewards(reversi_env, prev_board, player, base_reward=1):
+    prev_count = np.sum(prev_board[:, :, player] == 1)
+    print(prev_count)
+    new_count = np.sum(reversi_env.board[:, :, player] == 1)
+    print(new_count)
+
+    return (new_count - prev_count)*base_reward
 
 
-def other_player(current_player):
-    return 3 - current_player
+def opp_greedy_rewards(reversi_env, prev_board, player, base_reward=1):
+    other = other_player(player)
+
+    prev_count = np.sum(prev_board[:, :, other] == 1)
+    new_count = np.sum(reversi_env.board[:, :, other] == 1)
+
+    return (prev_count - new_count)*base_reward
+
+
+def mobility_rewards(reversi_env, prev_board, player, base_reward=1):
+    mobility = np.sum(legal_moves(reversi_env.board, player, 8))
+
+    return mobility * base_reward
+
+
+def opp_mobility_rewards(reversi_env, prev_board, player, base_reward=1):
+    opp_mobility = -np.sum(legal_moves(reversi_env.board, other_player(player), 8))
+
+    return opp_mobility * base_reward
 
 
 def check_for_illegal_move(board, x_action, y_action, player, board_size, verbose=False):
@@ -174,7 +203,7 @@ class ReversiEnvironment:
                 return np.concatenate((self.board, np.expand_dims(legal_moves(self.board, player, self.board_size), axis=-1)),  axis=-1), reward, self.done, None
 
         # print(legal_moves(self.next_board, player, self.board_size))
-        return np.concatenate((self.board, np.expand_dims(legal_moves(self.board, player, self.board_size), axis=-1)),  axis=-1), 0, self.done, None
+        return np.concatenate((self.board, np.expand_dims(legal_moves(self.board, player, self.board_size), axis=-1)),  axis=-1), reward, self.done, None
 
     def reset(self):
         self.board = np.zeros((self.board_size,self.board_size, 3))
