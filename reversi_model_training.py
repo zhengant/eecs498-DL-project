@@ -20,6 +20,13 @@ def smooth(y, box_pts):
     return y_smooth
 
 
+def win_rate(rew):
+    rew = np.array([rew])
+    wins = np.cumsum(rew >= 1)
+    total = np.cumsum(np.ones(rew.shape[1]))
+    return np.divide(wins, total)
+
+
 def dqn_reversi(env, network, config, **kwargs):
     """
     Parameters:
@@ -44,6 +51,8 @@ def dqn_reversi(env, network, config, **kwargs):
                 rew = locals['episode_rewards']
                 smooth_rew = smooth(rew, 500)
                 plt.plot(range(len(smooth_rew)), smooth_rew)
+                plt.show()
+                plt.plot(win_rate(rew))
                 plt.show()
             return True
         if config['save_model'] and locals['t'] % config['save_timesteps'] == 0:
