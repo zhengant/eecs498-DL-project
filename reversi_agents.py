@@ -1,7 +1,13 @@
+import os
+import subprocess
+import time
+import _thread
+import shlex
+
 import numpy as np
 import tensorflow as tf
-import baselines.common.tf_util as U
-from baselines.deepq.utils import ObservationInput
+# import baselines.common.tf_util as U
+# from baselines.deepq.utils import ObservationInput
 from reversi_environment import legal_moves
 from models import reversi_network
 from baselines.common.tf_util import save_variables, load_variables, get_session
@@ -149,3 +155,158 @@ class ClonedAgent():
 
 
         return self.network(np.expand_dims(board, axis=0))
+
+class EdaxAgent():
+    # BROKEN AT THE MOMENT, DON'T USE
+    def __init__(self, engine_path='edax-4.4', ply=1, num_tasks=1):
+        self.engine_path = engine_path
+        self.ply = ply
+        self.num_tasks = num_tasks
+        self.engine_active = False
+        self.std_start_fen = "8/8/8/3pP3/3Pp3/8/8/8 b - - 0 1"
+        self.p = None
+        self.mv = ""
+
+        self.engine_init()
+
+    def engine_init(self):
+        self.engine_active = False
+        if not os.path.exists(self.engine_path):
+            print("Error enginepath does not exist")
+            return
+
+        arglist = [self.engine_path,"-xboard", "-l", str(self.ply), "-n", str(self.num_tasks)]
+
+        # engine working directory containing the executable
+        engine_wdir = os.path.dirname(self.engine_path)
+
+        try:
+            p = subprocess.Popen(arglist, stdin=subprocess.PIPE, stdout=subprocess.PIPE, cwd=engine_wdir)
+            self.p = p
+        except OSError:
+            print("Error starting engine - check path/permissions")
+            #tkMessageBox.showinfo("OthelloTk Error", "Error starting engine",
+            #                       detail="Check path/permissions")
+            return
+
+        # check process is running
+        i = 0
+        while (p.poll() is not None):            
+            i += 1
+            if i > 40:        
+                print("unable to start engine process")
+                return False
+            time.sleep(0.25)        
+
+        # start thread to read stdout
+        self.op = []
+        self.soutt = _thread.start_new_thread( self.read_stdout, () )
+        #self.command('xboard\n')
+        self.command('protover 2\n')
+
+        # Engine should respond to "protover 2" with "feature" command
+        response_ok = False
+        i = 0
+        while True:            
+            for l in self.op:
+                if l.startswith("feature "):
+                    response_ok = True
+            self.op = []
+            if response_ok:
+                break            
+            i += 1
+            if i > 60:                
+                print("Error - no response from engine")
+                return
+            time.sleep(0.25)
+
+        self.command('variant reversi\n')
+        self.command("setboard " + self.std_start_fen + "\n")
+        # self.command("st " + str(self.settings["time_per_move"]) + "\n") # time per move in seconds
+        #self.command('sd 4\n')
+        #sd = "sd " + str(self.settings["searchdepth"]) + "\n"
+        #print "setting search depth:",sd
+        #self.command(sd)
+        self.engine_active = True
+
+    def command(self, cmd):
+        try:
+            self.p.stdin.write(bytes(cmd, "UTF-8"))
+            self.p.stdin.flush()
+        except AttributeError:
+            print("AttributeError")
+        except IOError:
+            print("ioerror")
+
+    def read_stdout(self):
+        while True:
+            try:
+                self.p.stdout.flush()
+                line = self.p.stdout.readline()
+                line = line.decode("UTF-8")
+                line = line.strip()
+                if line == '':
+                    print("eof reached in read_stdout")
+                    break  
+                self.op.append(line)
+            except Exception as e:
+                print("subprocess error in read_stdout:",e)
+
+    # convert move to board coordinates (e.g. "d6" goes to 3, 5)
+    def conv_to_coord(self, mv):
+        letter = mv[0]
+        num = mv[1]
+        x = "abcdefgh".index(letter)
+        y = int(num) - 1
+        return x, y
+
+    def get_computer_move(self, s=0):
+        # Check for move from engine
+        for l in self.op:
+            l = l.strip()
+            if l.startswith('move'):
+                self.mv = l[7:]
+                break
+        self.op = []
+        # if no move from engine wait 1 second and try again
+        if self.mv == "":
+            if s == 0:
+                # self.dprint("")
+                # self.dprint("white to move")
+                # self.b1.config(state=tk.DISABLED)
+                # self.b2.config(state=tk.DISABLED)
+                # self.b3.config(state=tk.DISABLED)
+                # self.b4.config(state=tk.DISABLED)
+                # self.menu_play.entryconfig("Move Now",state=tk.NORMAL)
+                pass
+            else:
+                pass
+                # self.dprint("elapsed ", s, " secs")
+            s += 1
+            root.after(1000, self.get_computer_move, s)
+            return
+
+        # self.b1.config(state=tk.NORMAL)
+        # self.b2.config(state=tk.NORMAL)
+        # self.b3.config(state=tk.NORMAL)
+        # self.b4.config(state=tk.NORMAL)
+        # self.menu_play.entryconfig("Move Now",state=tk.DISABLED)
+
+        # self.dprint("move:",self.mv)
+        mv = self.mv
+
+        # pass
+        # if mv == "@@":
+        #     self.stm = abs(self.stm - 1)
+        #     self.add_move_to_list("@@@@")
+        #     self.print_board()
+        #     return
+
+        # convert move to board coordinates (e.g. "d6" goes to 3, 5)
+        x, y = self.conv_to_coord(mv)
+        #letter = mv[0]
+        #num = mv[1]
+        #x = "abcdefgh".index(letter)
+        #y = int(num) - 1
+
+        return x, y

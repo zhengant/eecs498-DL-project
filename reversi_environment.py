@@ -78,12 +78,13 @@ def random_move(legal_moves_board,):
 
 
 class ReversiEnvironment:
-    def __init__(self, opponent_model=None, board_size=8, reward_fn=simple_rewards, base_reward=1):
+    def __init__(self, opponent_model=None, board_size=8, reward_fn=simple_rewards, base_reward=1, reward_before_opp=True):
         self.opponent_model = opponent_model
         self.board_size = board_size
         self.board = np.zeros((board_size, board_size, 3))
         self.reward_fn = reward_fn
         self.base_reward = 1
+        self.reward_before_opp = reward_before_opp
         self.done = False
         self.winner = 0
         self.starting_player = -1
@@ -133,14 +134,21 @@ class ReversiEnvironment:
                     self.board[x_loc, y_loc, player] = 1
                 self.board[x,y, :] = 0
                 self.board[x,y, player] = 1
-                reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)
+
+                # compute rewards for rewards like greedy, mobility
+                if self.reward_before_opp:
+                    reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)
+                else:
+                    prev_board = self.board.copy()    
 
             self.opponent_move()
+            # compute rewards for rewards like opponent greedy, opponent mobility, simple rewards
+            if not self.reward_before_opp:
+                reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)                
 
             # Check for full board
             if np.sum(np.abs(self.board[:,:,1:3]), axis=(0,1,2)) == self.board_size*self.board_size:
                 self.done = True
-                reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)
                 # print(legal_moves(self.next_board, player, self.board_size))
                 return np.concatenate((self.board, np.expand_dims(legal_moves(self.board, player, self.board_size), axis=-1)),  axis=-1), reward, self.done, None
         else:
