@@ -8,6 +8,7 @@ import tensorflow as tf
 from baselines.a2c.utils import fc
 
 from baselines.common.models import register
+from baselines.common.tf_util import get_session
 
 from reversi_environment import legal_moves
 
@@ -37,8 +38,8 @@ def network():
 @register('reversi_network')
 def reversi_network(num_layers=2, num_hidden=64, activation=tf.tanh, layer_norm=False):
     def network_fn(X):
-        board = X[:,:,:,0:3]
-        # legal_mask = X[:,:,:,3]
+        board = X[:,:,:,0:-1]
+        # legal_mask = X[:,:,:,-1]
 
         h = tf.layers.flatten(board)
         for i in range(num_layers-1):

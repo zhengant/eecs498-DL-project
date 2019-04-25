@@ -116,6 +116,7 @@ def learn(env,
           param_noise=False,
           callback=None,
           load_path=None,
+          other_models=None,
           **network_kwargs
             ):
     """Train a deepq model.
@@ -244,6 +245,10 @@ def learn(env,
     episode_rewards = [0.0]
     saved_mean_reward = None
     obs = env.reset()
+
+    if other_models is not None:
+        obs = other_models.predict(obs)
+
     reset = True
 
     with tempfile.TemporaryDirectory() as td:
@@ -259,7 +264,6 @@ def learn(env,
         elif load_path is not None:
             load_variables(load_path)
             logger.log('Loaded model from {}'.format(load_path))
-
 
         for t in range(total_timesteps):
             if callback is not None:
@@ -288,6 +292,10 @@ def learn(env,
             env_action = action
             reset = False
             new_obs, rew, done, _ = env.step(env_action)
+
+            if other_models is not None:
+                new_obs = other_models.predict(new_obs)
+
             # Store transition in the replay buffer.
             replay_buffer.add(obs, action, rew, new_obs, float(done))
             obs = new_obs
@@ -295,6 +303,10 @@ def learn(env,
             episode_rewards[-1] += rew
             if done:
                 obs = env.reset()
+
+                if other_models is not None:
+                    obs = other_models.predict(obs)
+
                 episode_rewards.append(0.0)
                 reset = True
 

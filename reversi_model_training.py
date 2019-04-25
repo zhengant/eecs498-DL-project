@@ -55,12 +55,12 @@ def dqn_reversi(env, network, config, **kwargs):
                 plt.plot(win_rate(rew))
                 plt.show()
             return True
-        if config['save_model'] and locals['t'] % config['save_timesteps'] == 0:
-            save_variables(config['save_path'])
         if locals['t'] % config['opponent_update'] == 0:
             q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
                                             scope="deepq/q_func")
             env.opponent_model.update(q_func_vars)
+        if config['save_model'] and locals['t'] % config['save_timesteps'] == 0:
+            save_variables(config['save_path'], tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=config['model_name']))
         return False
 
     act = deepq.learn(

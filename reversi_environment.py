@@ -72,6 +72,11 @@ def is_inside_board(x, y, board_size):
     return True
 
 
+def random_move(legal_moves_board,):
+    out = np.random.multinomial(1, legal_moves_board.flatten(), 1)
+    return np.argmax(out)
+
+
 class ReversiEnvironment:
     def __init__(self, opponent_model=None, board_size=8, reward_fn=simple_rewards, base_reward=1):
         self.opponent_model = opponent_model
@@ -190,15 +195,22 @@ class ReversiEnvironment:
         if np.sum(legal_moves_mask>0, axis=(0,1)) == 0:
             return False
 
+        if np.random.random() < 0.02:
+            action = random_move(legal_moves_mask.reshape((-1, 64)).flatten() / np.sum(legal_moves_mask))
+            # print(action)
+            r_max = action // self.board_size
+            c_max = action % self.board_size
+
         # print(transformed_board[:,:,1] - transformed_board[:,:,2])
         # print(legal_moves_mask)
+        else:
+            Q_vals = self.opponent_model.predict(np.concatenate((transformed_board, np.expand_dims(legal_moves(transformed_board, 1, self.board_size), axis=-1)),  axis=-1)).reshape((8,8))
+            Q_vals *= legal_moves_mask
+            Q_vals[~legal_moves_mask] = -np.inf
+            row_max = np.max(Q_vals, axis=0)
+            c_max = np.argmax(row_max)
+            r_max = np.argmax(Q_vals[:,c_max])
 
-        Q_vals = self.opponent_model.predict(np.concatenate((transformed_board, np.expand_dims(legal_moves(transformed_board, 1, self.board_size), axis=-1)),  axis=-1)).reshape((8,8))
-        Q_vals *= legal_moves_mask
-        Q_vals[~legal_moves_mask] = -np.inf
-        row_max = np.max(Q_vals, axis=0)
-        c_max = np.argmax(row_max)
-        r_max = np.argmax(Q_vals[:,c_max])
 
         # print(self.board[:,:,1] - self.board[:,:,2])
         # print(r_max, c_max)

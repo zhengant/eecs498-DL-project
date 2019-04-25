@@ -184,7 +184,7 @@ def build_act(make_obs_ph, q_func, num_actions, scope="deepq", reuse=None):
         q_values = q_func(obs, num_actions, scope="q_func")
 
         board_size = obs.shape[1]
-        legal_mask = tf.reshape(obs[:,:,:,3], shape=[-1, board_size*board_size])
+        legal_mask = tf.reshape(obs[:,:,:,-1], shape=[-1, board_size*board_size])
         masked_q_values = q_values * legal_mask
         q_values = masked_q_values + -2 * (1 - legal_mask)
 
