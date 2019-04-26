@@ -98,15 +98,30 @@ def simple_rewards(reversi_env, prev_board, player, base_reward=1):
 def corner_rewards(reversi_env, prev_board, player, base_reward=1):
     board_diff = reversi_env.board - prev_board
     rew = 0
-    if board_diff[0,0,1]:
+    if board_diff[0,0,player]:
         rew += 1
-    if board_diff[0,-1,1]:
+    if board_diff[0,-1,player]:
         rew += 1
-    if board_diff[-1,0,1]:
+    if board_diff[-1,0,player]:
         rew += 1
-    if board_diff[-1,-1,1]:
+    if board_diff[-1,-1,player]:
         rew += 1
     return rew * base_reward
+
+
+def opp_corner_rewards(reversi_env, prev_board, player, base_reward=1):
+    other = other_player(player)
+    board_diff = reversi_env.board - prev_board
+    rew = 0
+    if board_diff[0,0,other]:
+        rew += 1
+    if board_diff[0,-1,other]:
+        rew += 1
+    if board_diff[-1,0,other]:
+        rew += 1
+    if board_diff[-1,-1,other]:
+        rew += 1
+    return -rew * base_reward
 
 
 def edge_rewards(reversi_env, prev_board, player, base_reward=1):
@@ -121,6 +136,21 @@ def edge_rewards(reversi_env, prev_board, player, base_reward=1):
     if board_diff[0,:,1].any():
         rew += np.sum(board_diff[0,:,1])
     return rew * base_reward
+
+
+def opp_edge_rewards(reversi_env, prev_board, player, base_reward=1):
+    other = other_player(player)
+    board_diff = reversi_env.board - prev_board
+    rew = 0
+    if board_diff[:,0,other].any():
+        rew += np.sum(board_diff[:,0,other])
+    if board_diff[:,-1,other].any():
+        rew += np.sum(board_diff[:,-1,other])
+    if board_diff[-1,:,other].any():
+        rew += np.sum(board_diff[-1,:,other])
+    if board_diff[0,:,other].any():
+        rew += np.sum(board_diff[0,:,other])
+    return -rew * base_reward
 
 
 def greedy_rewards(reversi_env, prev_board, player, base_reward=1):
