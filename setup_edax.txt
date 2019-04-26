@@ -1,0 +1,8 @@
+git clone https://github.com/abulmo/edax-reversi to root of the project
+Inside of edax-reversi, mkdir bin
+Inside of edax-reversi/src, make build COMP=g++
+Inside of edax-reversi/bin, wget https://github.com/abulmo/edax-reversi/releases/download/v4.4/eval.7z
+Extract eval.7z
+You should have a data/ directory in edax-reversi/bin
+If you cloned edax-reversi somewhere else, set the engine_dir parameter in __init__ for EdaxAgent to the directory containing your edax executable
+If you renamed your executable, set the engine_name parameter in __init__ for EdaxAgent to the name of your executable
