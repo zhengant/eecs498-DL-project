@@ -50,15 +50,25 @@ layer_norm = False
 sess = get_session()
 
 # model1_name = 'reversi_edges_and_corners'
-model1_name = 'reversi_edges'
-model2_name = 'reversi_baseline'
+model1_name = 'reversi_baseline_2'
+model2_name = 'reversi_edges_2'
 env = ReversiEnvironment(reward_fn=zero_rewards)
 # model2 = load_model(model2_name, env)
-# model1 = load_model_2(model1_name, env, other_model_names)
-model1 = load_model(model1_name, env)
+# model1 = load_model(model1_name, env)
+
+model_load_path = "".join(['saved_models/', 'reversi_edges_2', '.pkl'])
+model1 = PredictorAgent(reversi_network(num_layers=num_layers,
+                                       num_hidden=num_hidden,
+                                       activation=activation,
+                                       layer_norm=layer_norm),
+                       env,
+                       model_scope='reversi_edges')
+load_variables(model_load_path, variables=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='reversi_edges'))
+
+# model2 = load_model_2(model2_name, env, other_model_names)
 
 # model1 = RandomAgent()
-model2 = PlayerAgent()
+model2 = RandomAgent()
 
 
 env.update_opponent_model(model2)

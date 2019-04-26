@@ -1,6 +1,6 @@
 import gym
 import tensorflow as tf
-from models import reversi_network, composite_reversi_network
+from models import reversi_network
 
 import baselines.common.tf_util as U
 from baselines.deepq.utils import ObservationInput
@@ -20,13 +20,17 @@ if __name__ == '__main__':
     num_hidden = 128
     activation = tf.nn.relu
     layer_norm = False
-    model_name = 'reversi_baseline_2'
+    reward_fn = mobility_rewards
+
+    model_name = 'reversi_mobility_2'
+    # load_path = "".join(['saved_models/', model_name, '.pkl'])
+    # save_path = "".join(['saved_models/', model_name, '_2', '.pkl'])
     model_loc = "".join(['saved_models/', model_name, '.pkl'])
 
     # other_model_names = ['reversi_edges', 'reversi_corners', 'reversi_greedy', 'reversi_mobility', 'reversi_opp_greedy', 'reversi_opp_mobility']
 
 
-    env = ReversiEnvironment(reward_fn=simple_rewards)
+    env = ReversiEnvironment(reward_fn=reward_fn)
     other_models = None
     # other_models = ModelLoader(env, model_scope=model_name, other_model_names=other_model_names)
     # env.observation_space = gym.spaces.Box(low=0, high=1,
@@ -42,7 +46,7 @@ if __name__ == '__main__':
 
     config = {
         'lr': 1e-2,
-        'total_timesteps': 700000,
+        'total_timesteps': 350000,
         'buffer_size': 50000,
         'exploration_fraction': 0.1,
         'exploration_final_eps': 0.02,
