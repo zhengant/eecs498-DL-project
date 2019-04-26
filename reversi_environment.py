@@ -135,6 +135,8 @@ class ReversiEnvironment:
                 self.board[x,y, :] = 0
                 self.board[x,y, player] = 1
 
+                self.opponent_model.input_opp_move(x, y)
+
                 # compute rewards for rewards like greedy, mobility
                 if self.reward_before_opp:
                     reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)
@@ -189,6 +191,7 @@ class ReversiEnvironment:
         # if self.starting_player == -1:
         #     player = 2
         self.next_board = self.board.copy()
+        self.opponent_model.reset()
 
         return np.concatenate((self.board, np.expand_dims(legal_moves(self.board, player, self.board_size), axis=-1)),  axis=-1)
 

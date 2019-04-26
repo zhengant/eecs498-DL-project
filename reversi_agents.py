@@ -1,13 +1,14 @@
 import os
 import subprocess
 import time
-import _thread
+import threading
 import shlex
+import queue
 
 import numpy as np
 import tensorflow as tf
-# import baselines.common.tf_util as U
-# from baselines.deepq.utils import ObservationInput
+import baselines.common.tf_util as U
+from baselines.deepq.utils import ObservationInput
 from reversi_environment import legal_moves
 from models import reversi_network
 from baselines.common.tf_util import save_variables, load_variables, get_session
@@ -29,8 +30,21 @@ def load_model(model_name, env):
     load_variables(model_load_path, variables=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=model_name))
     return model
 
+class AbstractAgent():
+    def update(self, *args, **kwargs):
+        pass
 
-class RandomAgent():
+    def predict(self, board):
+        pass
+
+    def input_opp_move(self, row, col):
+        pass
+
+    def reset(self):
+        pass
+
+
+class RandomAgent(AbstractAgent):
     def update(self, *args, **kwargs):
         pass
 
@@ -39,7 +53,7 @@ class RandomAgent():
         return np.random.rand(board_size, board_size)
 
 
-class PlayerAgent():
+class PlayerAgent(AbstractAgent):
     def update(self, *args, **kwargs):
         pass
 
@@ -61,7 +75,7 @@ class PlayerAgent():
         return q_vals
 
 
-class ModelLoader():
+class ModelLoader(AbstractAgent):
     def __init__(self, env, model_scope, other_model_names):
         num_other_models = len(other_model_names)
 
@@ -84,7 +98,7 @@ class ModelLoader():
         return board
 
 
-class PredictorAgent():
+class PredictorAgent(AbstractAgent):
     def __init__(self, network, env, model_scope):
         with tf.variable_scope(model_scope, reuse=False):
             observation_space = env.observation_space
@@ -100,7 +114,7 @@ class PredictorAgent():
         return self.network(np.expand_dims(board, axis=0))
 
 
-class CompositeAgent():
+class CompositeAgent(AbstractAgent):
     def __init__(self, network, env, model_scope, other_models):
         num_other_models = len(other_models)
         self.other_models = other_models
@@ -129,7 +143,7 @@ class CompositeAgent():
         return self.network(np.expand_dims(board, axis=0))
 
 
-class ClonedAgent():
+class ClonedAgent(AbstractAgent):
     def __init__(self, network, env, model_scope="cloned_agent", other_models=[]):
         with tf.variable_scope(model_scope, reuse=False):
             observation_space = env.observation_space
@@ -156,35 +170,84 @@ class ClonedAgent():
 
         return self.network(np.expand_dims(board, axis=0))
 
-class EdaxAgent():
-    # BROKEN AT THE MOMENT, DON'T USE
-    def __init__(self, engine_path='edax-4.4', ply=1, num_tasks=1):
-        self.engine_path = engine_path
+class EdaxAgent(AbstractAgent):
+    def __init__(self, engine_dir='edax-reversi/bin/', engine_name='lEdax-x64-modern', ply=1, num_tasks=1):
+        self.engine_dir = engine_dir
+        self.engine_name = engine_name
         self.ply = ply
         self.num_tasks = num_tasks
         self.engine_active = False
         self.std_start_fen = "8/8/8/3pP3/3Pp3/8/8/8 b - - 0 1"
         self.p = None
-        self.mv = ""
+        self.p_out = queue.Queue()
+        self.end_stdout = False
+        self.go = False
 
         self.engine_init()
 
+    # def __del__(self):
+    #     if self.p.poll() is not None:
+    #         self.p.kill()
+
+    #     self.end_stdout = True
+    #     self.soutt.join()
+    
+    def reset(self):
+        if self.soutt is not None:
+            self.end_stdout = True
+            self.soutt.join()
+            self.p_out = queue.Queue()
+            self.end_stdout = False
+            self.soutt = threading.Thread(target=self.read_stdout).start()
+        self.command('force\n')
+        self.command("setboard " + self.std_start_fen + "\n")
+        self.go = False
+
+    def input_opp_move(self, row, col):
+        if type(col) is not str:
+            col = "abcdefgh"[col]
+        row = row + 1
+        move = col + str(row)
+        self.command('usermove ' + move + '\n')
+
+    def predict(self, board):
+        if not self.go:
+            self.command('go\n')
+            self.go = True
+
+        row, col = self.get_edax_move()
+
+        q = np.zeros((8, 8))
+        q[row, col] = np.inf
+
+        return q
+
     def engine_init(self):
         self.engine_active = False
-        if not os.path.exists(self.engine_path):
+        if not os.path.exists(os.path.join(self.engine_dir, self.engine_name)):
             print("Error enginepath does not exist")
             return
 
-        arglist = [self.engine_path,"-xboard", "-l", str(self.ply), "-n", str(self.num_tasks)]
+        engine_path = os.path.join(self.engine_dir, self.engine_name)
+        eval_path = os.path.join(self.engine_dir, 'data', 'eval.dat')
+        book_path = os.path.join(self.engine_dir, 'data', 'book.dat')
+
+        arglist = [engine_path,
+                    "-xboard",  
+                    "-n", str(self.num_tasks), 
+                    '-eval-file', eval_path, 
+                    '-book-file', book_path
+        ]
 
         # engine working directory containing the executable
-        engine_wdir = os.path.dirname(self.engine_path)
+        # engine_wdir = os.path.dirname(self.engine_path)
 
         try:
-            p = subprocess.Popen(arglist, stdin=subprocess.PIPE, stdout=subprocess.PIPE, cwd=engine_wdir)
+            p = subprocess.Popen(arglist, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
             self.p = p
-        except OSError:
+        except OSError as e:
             print("Error starting engine - check path/permissions")
+            print(e)
             #tkMessageBox.showinfo("OthelloTk Error", "Error starting engine",
             #                       detail="Check path/permissions")
             return
@@ -199,21 +262,17 @@ class EdaxAgent():
             time.sleep(0.25)        
 
         # start thread to read stdout
-        self.op = []
-        self.soutt = _thread.start_new_thread( self.read_stdout, () )
+        self.soutt = threading.Thread(target=self.read_stdout, daemon=True).start()
         #self.command('xboard\n')
         self.command('protover 2\n')
 
         # Engine should respond to "protover 2" with "feature" command
-        response_ok = False
         i = 0
+        response = ''
         while True:            
-            for l in self.op:
-                if l.startswith("feature "):
-                    response_ok = True
-            self.op = []
-            if response_ok:
-                break            
+            response = self.p_out.get() 
+            if response.startswith('feature'):
+                break       
             i += 1
             if i > 60:                
                 print("Error - no response from engine")
@@ -222,12 +281,13 @@ class EdaxAgent():
 
         self.command('variant reversi\n')
         self.command("setboard " + self.std_start_fen + "\n")
+        self.command('sd ' + str(self.ply) + '\n')
         # self.command("st " + str(self.settings["time_per_move"]) + "\n") # time per move in seconds
         #self.command('sd 4\n')
         #sd = "sd " + str(self.settings["searchdepth"]) + "\n"
         #print "setting search depth:",sd
         #self.command(sd)
-        self.engine_active = True
+        self.engine_active = True        
 
     def command(self, cmd):
         try:
@@ -241,14 +301,17 @@ class EdaxAgent():
     def read_stdout(self):
         while True:
             try:
+                if self.end_stdout:
+                    return
                 self.p.stdout.flush()
                 line = self.p.stdout.readline()
                 line = line.decode("UTF-8")
                 line = line.strip()
                 if line == '':
                     print("eof reached in read_stdout")
-                    break  
-                self.op.append(line)
+                    return  
+                print(line)
+                self.p_out.put(line)
             except Exception as e:
                 print("subprocess error in read_stdout:",e)
 
@@ -256,57 +319,19 @@ class EdaxAgent():
     def conv_to_coord(self, mv):
         letter = mv[0]
         num = mv[1]
-        x = "abcdefgh".index(letter)
-        y = int(num) - 1
-        return x, y
+        col = "abcdefgh".index(letter)
+        row = int(num) - 1
+        return row, col
 
-    def get_computer_move(self, s=0):
+    def get_edax_move(self, s=0):
         # Check for move from engine
-        for l in self.op:
-            l = l.strip()
-            if l.startswith('move'):
-                self.mv = l[7:]
-                break
-        self.op = []
-        # if no move from engine wait 1 second and try again
-        if self.mv == "":
-            if s == 0:
-                # self.dprint("")
-                # self.dprint("white to move")
-                # self.b1.config(state=tk.DISABLED)
-                # self.b2.config(state=tk.DISABLED)
-                # self.b3.config(state=tk.DISABLED)
-                # self.b4.config(state=tk.DISABLED)
-                # self.menu_play.entryconfig("Move Now",state=tk.NORMAL)
-                pass
-            else:
-                pass
-                # self.dprint("elapsed ", s, " secs")
-            s += 1
-            root.after(1000, self.get_computer_move, s)
-            return
-
-        # self.b1.config(state=tk.NORMAL)
-        # self.b2.config(state=tk.NORMAL)
-        # self.b3.config(state=tk.NORMAL)
-        # self.b4.config(state=tk.NORMAL)
-        # self.menu_play.entryconfig("Move Now",state=tk.DISABLED)
-
-        # self.dprint("move:",self.mv)
-        mv = self.mv
-
-        # pass
-        # if mv == "@@":
-        #     self.stm = abs(self.stm - 1)
-        #     self.add_move_to_list("@@@@")
-        #     self.print_board()
-        #     return
+        line = ''
+        while not line.startswith('move'):
+            line = self.p_out.get()
+        
+        mv = line[7:]
 
         # convert move to board coordinates (e.g. "d6" goes to 3, 5)
-        x, y = self.conv_to_coord(mv)
-        #letter = mv[0]
-        #num = mv[1]
-        #x = "abcdefgh".index(letter)
-        #y = int(num) - 1
+        row, col = self.conv_to_coord(mv)
 
-        return x, y
+        return row, col
