@@ -10,7 +10,7 @@ from baselines.common.tf_util import load_variables
 from reversi_environment import ReversiEnvironment
 from reversi_agents import RandomAgent, ClonedAgent, PlayerAgent, CompositeAgent, ModelLoader
 from reversi_model_training import dqn_reversi
-from reversi_rewards import simple_rewards, corner_rewards, greedy_rewards, opp_greedy_rewards, opp_mobility_rewards, edge_rewards, mobility_rewards
+from reversi_rewards import simple_rewards, corner_rewards, greedy_rewards, opp_greedy_rewards, opp_mobility_rewards, edge_rewards, mobility_rewards, opp_corner_rewards, opp_edge_rewards
 
 import numpy as np
 
@@ -20,29 +20,36 @@ if __name__ == '__main__':
     num_hidden = 128
     activation = tf.nn.relu
     layer_norm = False
-    reward_fn = mobility_rewards
+    reward_fn = simple_rewards
 
-    model_name = 'reversi_mobility_2'
+    model_name = 'reversi_baseline_4'
     # load_path = "".join(['saved_models/', model_name, '.pkl'])
     # save_path = "".join(['saved_models/', model_name, '_2', '.pkl'])
     model_loc = "".join(['saved_models/', model_name, '.pkl'])
 
-    # other_model_names = ['reversi_edges', 'reversi_corners', 'reversi_greedy', 'reversi_mobility', 'reversi_opp_greedy', 'reversi_opp_mobility']
+    other_model_names = ['reversi_edges_2',
+                         'reversi_corners_2',
+                         'reversi_greedy_2',
+                         'reversi_mobility_2',
+                         'reversi_opp_edges_2',
+                         'reversi_opp_corners_2',
+                         'reversi_opp_greedy_2',
+                         'reversi_opp_mobility_2']
 
 
-    env = ReversiEnvironment(reward_fn=reward_fn)
+    env = ReversiEnvironment(reward_fn=reward_fn, reward_before_opp=True)
     other_models = None
     # other_models = ModelLoader(env, model_scope=model_name, other_model_names=other_model_names)
     # env.observation_space = gym.spaces.Box(low=0, high=1,
     #                                         shape=(8, 8, 4+len(other_model_names)),
     #                                         dtype=np.int32)
-    # env.update_opponent_model(ClonedAgent(reversi_network(num_layers=num_layers,
-    #                                                       num_hidden=num_hidden,
-    #                                                       activation=activation,
-    #                                                       layer_norm=layer_norm),
-    #                                       env,
-    #                                       other_models=other_models.other_models,
-    #                                       model_scope=model_name))
+    env.update_opponent_model(ClonedAgent(reversi_network(num_layers=num_layers,
+                                                          num_hidden=num_hidden,
+                                                          activation=activation,
+                                                          layer_norm=layer_norm),
+                                          env,
+                                          other_models=[],
+                                          model_scope=model_name))
 
     config = {
         'lr': 1e-2,
@@ -73,12 +80,12 @@ if __name__ == '__main__':
         'gamma': 1,
         'other_models': other_models,
     }
-    env.update_opponent_model(ClonedAgent(reversi_network(num_layers=num_layers,
-                                                          num_hidden=num_hidden,
-                                                          activation=activation,
-                                                          layer_norm=layer_norm),
-                                          env,
-                                          model_scope=model_name))
+    # env.update_opponent_model(ClonedAgent(reversi_network(num_layers=num_layers,
+    #                                                       num_hidden=num_hidden,
+    #                                                       activation=activation,
+    #                                                       layer_norm=layer_norm),
+    #                                       env,
+    #                                       model_scope=model_name))
 
     # other_models = []
     # other_models.append(load_model('reversi_edges', env))

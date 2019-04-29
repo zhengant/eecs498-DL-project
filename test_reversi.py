@@ -1,4 +1,4 @@
-from reversi_agents import PredictorAgent, RandomAgent, CompositeAgent, ModelLoader, PlayerAgent
+from reversi_agents import PredictorAgent, RandomAgent, CompositeAgent, ModelLoader, PlayerAgent, EdaxAgent
 from reversi_environment import ReversiEnvironment, legal_moves, random_move
 from reversi_rewards import zero_rewards
 from models import reversi_network
@@ -33,12 +33,17 @@ def load_model_2(model_name, env, other_model_names):
                         other_models=other_models.other_models,
                         model_scope=model_name)
     load_variables(model_load_path, variables=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=model_name))
-    return model
+    return model, other_models
 
 
-
-other_model_names = ['reversi_edges', 'reversi_corners', 'reversi_greedy', 'reversi_mobility', 'reversi_opp_greedy', 'reversi_opp_mobility']
-
+other_model_names = ['reversi_edges_2',
+                     'reversi_corners_2',
+                     'reversi_greedy_2',
+                     'reversi_mobility_2',
+                     'reversi_opp_edges_2',
+                     'reversi_opp_corners_2',
+                     'reversi_opp_greedy_2',
+                     'reversi_opp_mobility_2']
 
 num_games = 1000
 
@@ -50,26 +55,30 @@ layer_norm = False
 sess = get_session()
 
 # model1_name = 'reversi_edges_and_corners'
-model1_name = 'reversi_baseline_2'
-model2_name = 'reversi_edges_2'
+# model1_name = 'reversi_baseline_3'
+# model1_name = 'reversi_corners_2'
+# model1_name = 'reversi_edges_2'
+# model1_name = 'reversi_greedy_2'
+# model1_name = 'reversi_mobility_2'
+# model1_name = 'reversi_opp_corners_2'
+# model1_name = 'reversi_opp_edges_2'
+# model1_name = 'reversi_opp_greedy_2'
+# model1_name = 'reversi_opp_mobility_2'
+
+# model2_name = 'reversi_corners_2'
 env = ReversiEnvironment(reward_fn=zero_rewards)
-# model2 = load_model(model2_name, env)
+
 # model1 = load_model(model1_name, env)
+# model2 = load_model(model2_name, env)
 
-model_load_path = "".join(['saved_models/', 'reversi_edges_2', '.pkl'])
-model1 = PredictorAgent(reversi_network(num_layers=num_layers,
-                                       num_hidden=num_hidden,
-                                       activation=activation,
-                                       layer_norm=layer_norm),
-                       env,
-                       model_scope='reversi_edges')
-load_variables(model_load_path, variables=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='reversi_edges'))
+model1, other_models = load_model_2('reversi_aggregate_2', env, other_model_names)
+model2 = other_models.other_models[7]
 
-# model2 = load_model_2(model2_name, env, other_model_names)
+# model1 = PlayerAgent()
+# model2 = RandomAgent()
 
-# model1 = RandomAgent()
-model2 = RandomAgent()
 
+# model2 = EdaxAgent()
 
 env.update_opponent_model(model2)
 
