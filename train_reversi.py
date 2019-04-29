@@ -23,26 +23,13 @@ if __name__ == '__main__':
     reward_fn = simple_rewards
 
     model_name = 'reversi_baseline_4'
-    # load_path = "".join(['saved_models/', model_name, '.pkl'])
-    # save_path = "".join(['saved_models/', model_name, '_2', '.pkl'])
     model_loc = "".join(['saved_models/', model_name, '.pkl'])
-
-    other_model_names = ['reversi_edges_2',
-                         'reversi_corners_2',
-                         'reversi_greedy_2',
-                         'reversi_mobility_2',
-                         'reversi_opp_edges_2',
-                         'reversi_opp_corners_2',
-                         'reversi_opp_greedy_2',
-                         'reversi_opp_mobility_2']
 
 
     env = ReversiEnvironment(reward_fn=reward_fn, reward_before_opp=True)
+
+    # Sub Expert Model
     other_models = None
-    # other_models = ModelLoader(env, model_scope=model_name, other_model_names=other_model_names)
-    # env.observation_space = gym.spaces.Box(low=0, high=1,
-    #                                         shape=(8, 8, 4+len(other_model_names)),
-    #                                         dtype=np.int32)
     env.update_opponent_model(ClonedAgent(reversi_network(num_layers=num_layers,
                                                           num_hidden=num_hidden,
                                                           activation=activation,
@@ -50,6 +37,29 @@ if __name__ == '__main__':
                                           env,
                                           other_models=[],
                                           model_scope=model_name))
+
+    # Aggregate Model
+    # other_models = ModelLoader(env, model_scope=model_name, other_model_names=other_model_names)
+
+    # other_model_names = ['reversi_edges_2',
+    #                      'reversi_corners_2',
+    #                      'reversi_greedy_2',
+    #                      'reversi_mobility_2',
+    #                      'reversi_opp_edges_2',
+    #                      'reversi_opp_corners_2',
+    #                      'reversi_opp_greedy_2',
+    #                      'reversi_opp_mobility_2']
+                         
+    # env.observation_space = gym.spaces.Box(low=0, high=1,
+    #                                         shape=(8, 8, 4+len(other_model_names)),
+    #                                         dtype=np.int32)
+    # env.update_opponent_model(CompositeAgent(reversi_network(num_layers=num_layers,
+    #                                                       num_hidden=num_hidden,
+    #                                                       activation=activation,
+    #                                                       layer_norm=layer_norm),
+    #                                       env,
+    #                                       other_models=other_models,
+    #                                       model_scope=model_name))
 
     config = {
         'lr': 1e-2,
@@ -80,23 +90,5 @@ if __name__ == '__main__':
         'gamma': 1,
         'other_models': other_models,
     }
-    # env.update_opponent_model(ClonedAgent(reversi_network(num_layers=num_layers,
-    #                                                       num_hidden=num_hidden,
-    #                                                       activation=activation,
-    #                                                       layer_norm=layer_norm),
-    #                                       env,
-    #                                       model_scope=model_name))
 
-    # other_models = []
-    # other_models.append(load_model('reversi_edges', env))
-    # other_models.append(load_model('reversi_corners', env))
-    # env.update_opponent_model(CompositeAgent(reversi_network(num_layers=num_layers,
-    #                                                       num_hidden=num_hidden,
-    #                                                       activation=activation,
-    #                                                       layer_norm=layer_norm),
-    #                                       env,
-    #                                       other_models=other_models,
-    #                                       model_scope=model_name))
-    # env.update_opponent_model(PlayerAgent())
-    # env.update_opponent_model(RandomAgent())
     dqn_reversi(env, 'reversi_network', config, **kwargs)

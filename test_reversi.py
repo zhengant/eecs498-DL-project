@@ -9,7 +9,7 @@ import tensorflow as tf
 import numpy as np
 
 
-def load_model(model_name, env):
+def load_sub_expert_model(model_name, env):
     model_load_path = "".join(['saved_models/', model_name, '.pkl'])
     model = PredictorAgent(reversi_network(num_layers=num_layers,
                                           num_hidden=num_hidden,
@@ -21,7 +21,7 @@ def load_model(model_name, env):
     return model
 
 
-def load_model_2(model_name, env, other_model_names):
+def load_aggregate_model(model_name, env, other_model_names):
     other_models = ModelLoader(env, model_scope=model_name, other_model_names=other_model_names)
 
     model_load_path = "".join(['saved_models/', model_name, '.pkl'])
@@ -54,35 +54,20 @@ layer_norm = False
 
 sess = get_session()
 
-# model1_name = 'reversi_edges_and_corners'
-# model1_name = 'reversi_baseline_3'
-# model1_name = 'reversi_corners_2'
-# model1_name = 'reversi_edges_2'
-# model1_name = 'reversi_greedy_2'
-# model1_name = 'reversi_mobility_2'
-# model1_name = 'reversi_opp_corners_2'
-# model1_name = 'reversi_opp_edges_2'
-# model1_name = 'reversi_opp_greedy_2'
-# model1_name = 'reversi_opp_mobility_2'
-
-# model2_name = 'reversi_corners_2'
+model1_name = 'reversi_corners_2'
+model2_name = 'reversi_edges_2'
 env = ReversiEnvironment(reward_fn=zero_rewards)
 
-# model1 = load_model(model1_name, env)
-# model2 = load_model(model2_name, env)
+model1 = load_sub_expert_model(model1_name, env)
+model2 = load_sub_expert_model(model2_name, env)
 
-model1, other_models = load_model_2('reversi_aggregate_2', env, other_model_names)
-model2 = other_models.other_models[7]
+# model1, other_models = load_aggregate_model('reversi_aggregate_2', env, other_model_names)
 
-# model1 = PlayerAgent()
+# model2 = PlayerAgent()
 # model2 = RandomAgent()
-
-
-# model2 = EdaxAgent()
-
 env.update_opponent_model(model2)
 
-
+# Game Simulation
 result_list = []
 for i in range(num_games):
     state = env.reset()
