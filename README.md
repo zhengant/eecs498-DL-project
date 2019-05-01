@@ -9,4 +9,5 @@
 - gym
 
 To run: `python train_reversi.py` or `python train_gridworld.py`
-To test reversi_agents: `test_reversi.py`
+
+To test reversi_agents: `python test_reversi.py`
