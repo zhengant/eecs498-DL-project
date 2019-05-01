@@ -6,3 +6,4 @@ reversi_env
 edax**
 .vscode/
 othelloTk
+baselines/
