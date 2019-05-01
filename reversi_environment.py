@@ -78,13 +78,14 @@ def random_move(legal_moves_board,):
 
 
 class ReversiEnvironment:
-    def __init__(self, opponent_model=None, board_size=8, reward_fn=simple_rewards, base_reward=1, reward_before_opp=True):
+    def __init__(self, opponent_model=None, board_size=8, reward_fn=simple_rewards, base_reward=1, reward_before_opp=True, opp_eps_greedy=True):
         self.opponent_model = opponent_model
         self.board_size = board_size
         self.board = np.zeros((board_size, board_size, 3))
         self.reward_fn = reward_fn
         self.base_reward = 1
         self.reward_before_opp = reward_before_opp
+        self.opp_eps_greedy = opp_eps_greedy
         self.done = False
         self.winner = 0
         self.starting_player = -1
@@ -94,6 +95,15 @@ class ReversiEnvironment:
                                                 dtype=np.int32)
 
         self.action_space = gym.spaces.Discrete(self.board_size*self.board_size)
+
+    def __str__(self):
+        result = ''
+        for row in range(self.board_size):
+            for col in range(self.board_size):
+                result += '-XO'[np.argmax(self.board[row, col, :])]
+            result += '\n'
+
+        return result
 
     def step(self, action):
         if not np.sum(self.board, axis=2).all() == 1:
@@ -136,6 +146,7 @@ class ReversiEnvironment:
                 self.board[x,y, player] = 1
 
                 self.opponent_model.input_opp_move(x, y)
+                # print(str(self))
 
                 # compute rewards for rewards like greedy, mobility
                 if self.reward_before_opp:
@@ -144,6 +155,7 @@ class ReversiEnvironment:
                     prev_board = self.board.copy()    
 
             self.opponent_move()
+            # print(str(self))
             # compute rewards for rewards like opponent greedy, opponent mobility, simple rewards
             if not self.reward_before_opp:
                 reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)                
@@ -154,16 +166,24 @@ class ReversiEnvironment:
                 # print(legal_moves(self.next_board, player, self.board_size))
                 return np.concatenate((self.board, np.expand_dims(legal_moves(self.board, player, self.board_size), axis=-1)),  axis=-1), reward, self.done, None
         else:
+            self.opponent_model.input_opp_move(None, None, True)
+
             if not self.opponent_move():
                 self.done = True
                 reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)
                 # print(legal_moves(self.next_board, player, self.board_size))
                 return np.concatenate((self.board, np.expand_dims(legal_moves(self.board, player, self.board_size), axis=-1)),  axis=-1), reward, self.done, None
+            elif self.reward_before_opp: # opponent moved but reward is computed before opponent move
+                reward = 0
+            else: # opponent moved and reward is computed after opponent move
+                reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)
+            
 
         # print(legal_moves(self.next_board, player, self.board_size))
         return np.concatenate((self.board, np.expand_dims(legal_moves(self.board, player, self.board_size), axis=-1)),  axis=-1), reward, self.done, None
 
     def reset(self):
+        self.opponent_model.reset()
         self.board = np.zeros((self.board_size,self.board_size, 3))
         self.board[:,:,0] = 1
         self.board[self.board_size//2-1,self.board_size//2-1, 0] = 0
@@ -176,22 +196,23 @@ class ReversiEnvironment:
         self.starting_player = -1
 
         if self.starting_player == -1:
-            self.board[self.board_size//2-1,self.board_size//2-1, 2] = 1
-            self.board[self.board_size//2,self.board_size//2, 2] = 1
-            self.board[self.board_size//2-1,self.board_size//2, 1] = 1
-            self.board[self.board_size//2,self.board_size//2-1, 1] = 1
+            self.board[self.board_size//2-1,self.board_size//2-1, 1] = 1
+            self.board[self.board_size//2,self.board_size//2, 1] = 1
+            self.board[self.board_size//2-1,self.board_size//2, 2] = 1
+            self.board[self.board_size//2,self.board_size//2-1, 2] = 1
             self.opponent_move()
+            # print(str(self))
         else:
-            self.board[self.board_size // 2 - 1, self.board_size // 2 - 1, 1] = 1
-            self.board[self.board_size // 2, self.board_size // 2, 1] = 1
-            self.board[self.board_size // 2 - 1, self.board_size // 2, 2] = 1
-            self.board[self.board_size // 2, self.board_size // 2 - 1, 2] = 1
+            self.board[self.board_size // 2 - 1, self.board_size // 2 - 1, 2] = 1
+            self.board[self.board_size // 2, self.board_size // 2, 2] = 1
+            self.board[self.board_size // 2 - 1, self.board_size // 2, 1] = 1
+            self.board[self.board_size // 2, self.board_size // 2 - 1, 1] = 1
 
         player = 1
         # if self.starting_player == -1:
         #     player = 2
         self.next_board = self.board.copy()
-        self.opponent_model.reset()
+        
 
         return np.concatenate((self.board, np.expand_dims(legal_moves(self.board, player, self.board_size), axis=-1)),  axis=-1)
 
@@ -204,9 +225,10 @@ class ReversiEnvironment:
 
         legal_moves_mask = legal_moves(transformed_board, 1, self.board_size).astype(bool)
         if np.sum(legal_moves_mask>0, axis=(0,1)) == 0:
+            # self.opponent_model.needs_to_pass()
             return False
 
-        if np.random.random() < 0.02:
+        if self.opp_eps_greedy and np.random.random() < 0.02:
             action = random_move(legal_moves_mask.reshape((-1, 64)).flatten() / np.sum(legal_moves_mask))
             # print(action)
             r_max = action // self.board_size

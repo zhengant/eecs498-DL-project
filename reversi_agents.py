@@ -40,6 +40,9 @@ class AbstractAgent():
     def input_opp_move(self, row, col):
         pass
 
+    def needs_to_pass(self):
+        pass
+
     def reset(self):
         pass
 
@@ -203,12 +206,21 @@ class EdaxAgent(AbstractAgent):
         self.command("setboard " + self.std_start_fen + "\n")
         self.go = False
 
-    def input_opp_move(self, row, col):
-        if type(col) is not str:
-            col = "abcdefgh"[col]
-        row = row + 1
-        move = col + str(row)
-        self.command('usermove ' + move + '\n')
+    def input_opp_move(self, row, col, passed=False):
+        if passed:
+            self.command('usermove @@@@\n')
+        else:
+            if type(col) is not str:
+                col = "abcdefgh"[col]
+            row = row + 1
+            move = col + str(row)
+
+            # print('agent: ' + move)
+            self.command('usermove ' + move + '\n')
+    
+    def needs_to_pass(self):
+        _ = self.get_edax_move()
+
 
     def predict(self, board):
         if not self.go:
@@ -310,7 +322,6 @@ class EdaxAgent(AbstractAgent):
                 if line == '':
                     print("eof reached in read_stdout")
                     return  
-                print(line)
                 self.p_out.put(line)
             except Exception as e:
                 print("subprocess error in read_stdout:",e)
@@ -330,6 +341,9 @@ class EdaxAgent(AbstractAgent):
             line = self.p_out.get()
         
         mv = line[7:]
+        if mv == '@@@@':
+            return None
+        # print('edax: ' + mv)
 
         # convert move to board coordinates (e.g. "d6" goes to 3, 5)
         row, col = self.conv_to_coord(mv)
