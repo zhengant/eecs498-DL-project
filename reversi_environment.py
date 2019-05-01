@@ -160,6 +160,10 @@ class ReversiEnvironment:
             if not self.reward_before_opp:
                 reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)                
 
+            # compute rewards for rewards like opponent greedy, opponent mobility, simple rewards
+            if not self.reward_before_opp:
+                reward = self.reward_fn(self, prev_board, player, base_reward=self.base_reward)
+
             # Check for full board
             if np.sum(np.abs(self.board[:,:,1:3]), axis=(0,1,2)) == self.board_size*self.board_size:
                 self.done = True
@@ -193,7 +197,7 @@ class ReversiEnvironment:
         self.done = False
         self.winner = 0
         self.modify_pieces = []
-        self.starting_player = -1
+        self.starting_player *= -1
 
         if self.starting_player == -1:
             self.board[self.board_size//2-1,self.board_size//2-1, 1] = 1
@@ -265,58 +269,3 @@ class ReversiEnvironment:
 
     def update_opponent_model(self, opponent_model):
         self.opponent_model = opponent_model
-
-
-    # Stores the pieces that need to be modified
-
-# env = ReversiEnvironment(board_size=6)
-# print(env.board)
-#
-# def make_move(x,y, player):
-#     board, rew, done, info = env.step((x, y, player))
-#     print(board)
-#     print("Reward:", rew)
-#     print("Done:", done)
-#
-# player = 1
-# print(legal_moves(env, player))
-# make_move(1,3,player)
-#
-# player *= -1
-# print(legal_moves(env, player))
-# make_move(3,4,player)
-#
-# player *= -1
-# print(legal_moves(env, player))
-# make_move(4,3,player)
-
-# make_move(5,2,-1)
-# make_move(4,2,1)
-# make_move(1,2,-1)
-# make_move(5,3,1)
-# make_move(5,4,-1)
-# make_move(1,1,1)
-# make_move(0,2,-1)
-# make_move(3,1,1)
-# make_move(3,0,-1)
-# make_move(4,4,1)
-# make_move(0,3,-1)
-# make_move(2,4,1)
-# make_move(1,5,-1)
-# make_move(2,5,1)
-# make_move(0,0,-1)
-# make_move(0,1,1)
-# make_move(3,5,-1)
-# make_move(2,1,1)
-# make_move(2,0,-1)
-# make_move(1,0,1)
-# make_move(1,4,1)
-# make_move(0,5,-1)
-# make_move(0,4,1)
-# make_move(4,1,1)
-# make_move(5,0,-1)
-# make_move(4,0,1)
-# make_move(5,1,1)
-# make_move(5,5,1)
-# make_move(4,5,-1)
-# make_move(1326,1261,1)

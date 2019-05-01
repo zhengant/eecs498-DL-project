@@ -173,6 +173,7 @@ class ClonedAgent(AbstractAgent):
 
         return self.network(np.expand_dims(board, axis=0))
 
+
 class EdaxAgent(AbstractAgent):
     def __init__(self, engine_dir='edax-reversi/bin/', engine_name='lEdax-x64-modern', ply=1, num_tasks=1):
         self.engine_dir = engine_dir
@@ -286,7 +287,7 @@ class EdaxAgent(AbstractAgent):
             if response.startswith('feature'):
                 break       
             i += 1
-            if i > 60:                
+            if i > 60:            
                 print("Error - no response from engine")
                 return
             time.sleep(0.25)
